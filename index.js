@@ -1,4 +1,4 @@
-console.log('🐾 Starting...');
+console.log('🤖 Starting bot...'); // Message de démarrage du bot
 
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -52,6 +52,8 @@ function main() {
 
     writeCredJson(credsFilePath, newData);
     console.log('Updated Creds JSON:', newData);
+
+    console.log('🚀 Bot has started successfully!'); // Message indiquant que le bot a démarré avec succès
 }
 
 // Call the main function
