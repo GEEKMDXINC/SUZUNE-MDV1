@@ -62,6 +62,9 @@ global.nomorown = '6285736178354' //Nomor Owner
 global.namebot = 'Elaina BOT' //Nama Bot
 global.nameown = '𝓧𝓲𝓪𝓸 - 𝓨𝓪𝓷' // Nama Owner
 
+/*============== session ==============*/
+
+global.sessionId = ''; // Espace pour stocker la session ID
 
 /*============== STAFF ==============*/
 global.owner = [
