@@ -1,5 +1,4 @@
 console.log('🐾 Starting...')
-
 import yargs from 'yargs'
 import cfonts from 'cfonts'
 import { fileURLToPath } from 'url'
@@ -7,7 +6,7 @@ import { join, dirname } from 'path'
 import { createRequire } from 'module'
 import { createInterface } from 'readline'
 import { setupMaster, fork } from 'cluster'
-import { watchFile, unwatchFile } from 'fs'
+import { watchFile, unwatchFile, readFileSync } from 'fs'
 
 // https://stackoverflow.com/a/50052194
 const { say } = cfonts
@@ -20,45 +19,70 @@ say('Lightweight\nWhatsApp Bot', { font: 'chrome', align: 'center', gradient: ['
 say(`'${name}' By @${author.name || author}`, { font: 'console', align: 'center', gradient: ['red', 'magenta'] })
 
 var isRunning = false
+
 /**
  * Start a js file
  * @param {String} file `path/to/file`
  */
-function start(file) {
-  if (isRunning) return
-  isRunning = true
-  let args = [join(__dirname, file), ...process.argv.slice(2)]
-  say([process.argv[0], ...args].join(' '), { font: 'console', align: 'center', gradient: ['red', 'magenta'] })
-  setupMaster({ exec: args[0], args: args.slice(1) })
-  let p = fork()
-  p.on('message', data => {
-    console.log('[✅RECEIVED]', data)
-    switch (data) {
-      case 'reset':
-        p.process.kill()
-        isRunning = false
-        start.apply(this, arguments)
+function start(file) { 
+  if (isRunning) return isRunning = true 
+  let args = [join(__dirname, file), ...process.argv.slice(2)] 
+  say([process.argv[0], ...args].join(' '), { font: 'console', align: 'center', gradient: ['red', 'magenta'] }) 
+  setupMaster({ exec: args[0], args: args.slice(1) }) 
+  let p = fork() 
+  p.on('message', data => { 
+    console.log('[✅RECEIVED]', data) 
+    switch (data) { 
+      case 'reset': 
+        p.process.kill() 
+        isRunning = false 
+        start.apply(this, arguments) 
+        break 
+      case 'uptime': 
+        p.send(process.uptime()) 
+        break 
+      case 'newFeature': // Nouvelle fonctionnalité ajoutée
+        console.log('Nouvelle fonctionnalité activée !')
         break
-      case 'uptime':
-        p.send(process.uptime())
+      case 'sessionNotFound': // Gestion de session non trouvée
+        console.log('Session non trouvée. Recherche dans config.js...')
+        const session = getSessionFromConfig()
+        if (session) {
+          console.log('Session trouvée dans config.js')
+          p.send({ type: 'session', data: session })
+        } else {
+          console.log('Aucune session trouvée dans config.js')
+        }
         break
-    }
-  })
-  p.on('exit', (_, code) => {
-    isRunning = false
-    console.error('[❗]Exited with code:', code)
-    if (code !== 0) return start(file);
-    watchFile(args[0], () => {
-      unwatchFile(args[0]);
-      start(file);
-    });
-  });
-  let opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
-  if (!opts['test'])
-    if (!rl.listenerCount()) rl.on('line', line => {
-      p.emit('message', line.trim())
-    })
+    } 
+  }) 
+  p.on('exit', (_, code) => { 
+    isRunning = false 
+    console.error('[❗]Exited with code:', code) 
+    if (code !== 0) return start(file); 
+    watchFile(args[0], () => { 
+      unwatchFile(args[0]); 
+      start(file); 
+    }); 
+  }); 
+  let opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse()) 
+  if (!opts['test']) 
+    if (!rl.listenerCount()) rl.on('line', line => { 
+      p.emit('message', line.trim()) 
+    }) 
   // console.log(p)
+}
+
+function getSessionFromConfig() {
+  try {
+    const configPath = join(__dirname, 'config.js')
+    const configContent = readFileSync(configPath, 'utf-8')
+    const config = JSON.parse(configContent)
+    return config.session
+  } catch (error) {
+    console.error('Erreur lors de la lecture de config.js:', error)
+    return null
+  }
 }
 
 start('main.js')
