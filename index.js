@@ -1,88 +1,58 @@
-console.log('🐾 Starting...')
-import yargs from 'yargs'
-import cfonts from 'cfonts'
-import { fileURLToPath } from 'url'
-import { join, dirname } from 'path'
-import { createRequire } from 'module'
-import { createInterface } from 'readline'
-import { setupMaster, fork } from 'cluster'
-import { watchFile, unwatchFile, readFileSync } from 'fs'
+console.log('🐾 Starting...');
 
-// https://stackoverflow.com/a/50052194
-const { say } = cfonts
-const rl = createInterface(process.stdin, process.stdout)
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const require = createRequire(__dirname) // Bring in the ability to create the 'require' method
-const { name, author } = require(join(__dirname, './package.json')) // https://www.stefanjudis.com/snippets/how-to-import-json-files-in-es-modules-node-js/
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { join, dirname } from 'path';
+import { Buffer } from 'buffer';
 
-say('Lightweight\nWhatsApp Bot', { font: 'chrome', align: 'center', gradient: ['red', 'magenta'] })
-say(`'${name}' By @${author.name || author}`, { font: 'console', align: 'center', gradient: ['red', 'magenta'] })
+// Importer les configurations depuis config.js
+import { sessionID } from './config.js';
 
-var isRunning = false
-
-/**
- * Start a js file
- * @param {String} file `path/to/file`
- */
-function start(file) { 
-  if (isRunning) return isRunning = true 
-  let args = [join(__dirname, file), ...process.argv.slice(2)] 
-  say([process.argv[0], ...args].join(' '), { font: 'console', align: 'center', gradient: ['red', 'magenta'] }) 
-  setupMaster({ exec: args[0], args: args.slice(1) }) 
-  let p = fork() 
-  p.on('message', data => { 
-    console.log('[✅RECEIVED]', data) 
-    switch (data) { 
-      case 'reset': 
-        p.process.kill() 
-        isRunning = false 
-        start.apply(this, arguments) 
-        break 
-      case 'uptime': 
-        p.send(process.uptime()) 
-        break 
-      case 'newFeature': // Nouvelle fonctionnalité ajoutée
-        console.log('Nouvelle fonctionnalité activée !')
-        break
-      case 'sessionNotFound': // Gestion de session non trouvée
-        console.log('Session non trouvée. Recherche dans config.js...')
-        const session = getSessionFromConfig()
-        if (session) {
-          console.log('Session trouvée dans config.js')
-          p.send({ type: 'session', data: session })
-        } else {
-          console.log('Aucune session trouvée dans config.js')
-        }
-        break
-    } 
-  }) 
-  p.on('exit', (_, code) => { 
-    isRunning = false 
-    console.error('[❗]Exited with code:', code) 
-    if (code !== 0) return start(file); 
-    watchFile(args[0], () => { 
-      unwatchFile(args[0]); 
-      start(file); 
-    }); 
-  }); 
-  let opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse()) 
-  if (!opts['test']) 
-    if (!rl.listenerCount()) rl.on('line', line => { 
-      p.emit('message', line.trim()) 
-    }) 
-  // console.log(p)
+// Function to decode a Base64 encoded session ID using UTF-8
+function decodeBase64SessionId(base64SessionId) {
+    return Buffer.from(base64SessionId, 'base64').toString('utf-8');
 }
 
-function getSessionFromConfig() {
-  try {
-    const configPath = join(__dirname, 'config.js')
-    const configContent = readFileSync(configPath, 'utf-8')
-    const config = JSON.parse(configContent)
-    return config.session
-  } catch (error) {
-    console.error('Erreur lors de la lecture de config.js:', error)
-    return null
-  }
+// Function to read from session/creds.json
+function readCredJson(filePath) {
+    try {
+        const data = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.log(`Error reading file ${filePath}: ${error.message}`);
+        return null;
+    }
 }
 
-start('main.js')
+// Function to write to session/creds.json
+function writeCredJson(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+        console.log(`File ${filePath} updated successfully.`);
+    } catch (error) {
+        console.log(`Error writing to file ${filePath}: ${error.message}`);
+    }
+}
+
+// Main function to handle session ID and creds.json
+function main() {
+    const sessionId = decodeBase64SessionId(sessionID);
+    console.log('Decoded Session ID:', sessionId);
+
+    const sessionFolderPath = join(dirname(fileURLToPath(import.meta.url)), 'session');
+    const credsFilePath = join(sessionFolderPath, 'creds.json');
+    
+    const credData = readCredJson(credsFilePath);
+    console.log('Read Creds JSON:', credData);
+
+    const newData = {
+        sessionId: sessionId,
+        ...credData
+    };
+
+    writeCredJson(credsFilePath, newData);
+    console.log('Updated Creds JSON:', newData);
+}
+
+// Call the main function
+main();
