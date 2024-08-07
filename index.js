@@ -1,12 +1,12 @@
 console.log('🤖 Starting bot...'); // Message de démarrage du bot
 
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { join, dirname } from 'path';
-import { Buffer } from 'buffer';
+const fs = require('fs');
+const { join, dirname } = require('path');
+const { fileURLToPath } = require('url');
+const { Buffer } = require('buffer');
 
 // Importer les configurations depuis config.js
-import { sessionID } from './config.js';
+const { sessionId } = require('./config.js'); // Assurez-vous que 'sessionId' est exporté correctement depuis config.js
 
 // Function to decode a Base64 encoded session ID using UTF-8
 function decodeBase64SessionId(base64SessionId) {
@@ -36,17 +36,20 @@ function writeCredJson(filePath, data) {
 
 // Main function to handle session ID and creds.json
 function main() {
-    const sessionId = decodeBase64SessionId(sessionID);
-    console.log('Decoded Session ID:', sessionId);
+    const decodedSessionId = decodeBase64SessionId(sessionId);
+    console.log('Decoded Session ID:', decodedSessionId);
 
-    const sessionFolderPath = join(dirname(fileURLToPath(import.meta.url)), 'session');
-    const credsFilePath = join(sessionFolderPath, 'creds.json');
+    const credsFilePath = './session/creds.json';
     
+    // Read existing credentials data
     const credData = readCredJson(credsFilePath);
-    console.log('Read Creds JSON:', credData);
+    if (!credData) {
+        console.log('Failed to read credentials data.');
+        return;
+    }
 
     const newData = {
-        sessionId: sessionId,
+        sessionId: decodedSessionId,
         ...credData
     };
 
